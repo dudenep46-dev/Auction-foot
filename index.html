@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gavel FC</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b2e21'/%3E%3Cpath d='M16 5l2.4 6.2 6.6.4-5.1 4.2 1.7 6.4L16 18.6l-5.6 3.6 1.7-6.4L7 11.6l6.6-.4z' fill='%23e8b04a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Big+Shoulders+Display:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="toasts" role="status" aria-live="polite"></div>
+
+<!-- HOME -->
+<main id="home" class="screen wrap">
+  <header class="hero">
+    <p class="eyebrow">Private football auctions</p>
+    <h1 class="logo">Gavel<span>FC</span></h1>
+    <p class="lede">Open a private room, share the code, and bid against your friends for real stars. Everyone starts with <b>100,000</b>. Every squad needs exactly <b>26</b> players.</p>
+    <ul class="facts">
+      <li><b>2 to 8</b><span>managers per room</span></li>
+      <li><b>100,000</b><span>budget each</span></li>
+      <li><b>26</b><span>players per squad</span></li>
+      <li><b id="poolN">250</b><span>real players in the pool</span></li>
+    </ul>
+  </header>
+  <div class="forms">
+    <form id="createForm" class="panel" autocomplete="off">
+      <h2>Create a room</h2>
+      <label for="c-name">Your name<input id="c-name" maxlength="18" required placeholder="e.g. Ankit"></label>
+      <label for="c-pw">Room password<input id="c-pw" type="password" minlength="4" required placeholder="At least 4 characters"></label>
+      <button class="btn wide" type="submit">Create room</button>
+    </form>
+    <form id="joinForm" class="panel" autocomplete="off">
+      <h2>Join a room</h2>
+      <label for="j-code">Invite code<input id="j-code" maxlength="6" required placeholder="6 characters" style="text-transform:uppercase;letter-spacing:.2em"></label>
+      <label for="j-name">Your name<input id="j-name" maxlength="18" required></label>
+      <label for="j-pw">Room password<input id="j-pw" type="password" required></label>
+      <button class="btn wide" type="submit">Join room</button>
+    </form>
+  </div>
+  <p class="foot">Player ratings and clubs are approximate and can be edited in players.js.</p>
+</main>
+
+<!-- LOBBY -->
+<main id="lobby" class="screen wrap" hidden>
+  <div class="lobby-grid">
+    <section class="panel invite">
+      <p class="eyebrow">Invite code</p>
+      <div id="lobbyCode" class="code"></div>
+      <div class="row">
+        <button id="copyCode" class="btn ghost" type="button">Copy code</button>
+        <button id="copyLink" class="btn ghost" type="button">Copy invite link</button>
+      </div>
+      <p class="small">Friends need this code and the room password you chose.</p>
+    </section>
+    <section class="panel">
+      <h2>Managers <span id="lobbyCount" class="small"></span></h2>
+      <ul id="lobbyList" class="people"></ul>
+      <p id="lobbyHint" class="small" style="margin-bottom:1rem"></p>
+      <div class="row">
+        <button id="startBtn" class="btn" type="button" hidden>Start auction</button>
+        <button id="leaveLobby" class="btn ghost" type="button">Leave room</button>
+      </div>
+    </section>
+    <section class="panel rules">
+      <h2>How it works</h2>
+      <ul>
+        <li>Players come up one at a time, each with an opening price.</li>
+        <li>Bid as often as you like. Every bid resets the clock to at least 10 seconds.</li>
+        <li>You keep 100 back for every empty slot, so you can always finish your squad.</li>
+        <li>When all squads reach 26, the best XI (4-3-3) wins. A missing position counts as 50.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<!-- AUCTION -->
+<main id="auction" class="screen wrap" hidden>
+  <header class="topbar">
+    <div class="brand">Gavel<span>FC</span></div>
+    <div class="chip">Room <b id="a-code"></b></div>
+    <div class="chip"><b id="a-lot"></b> &middot; <span id="a-left"></span></div>
+    <div id="conn" class="chip" hidden>Reconnecting</div>
+    <div class="grow"></div>
+    <div class="me"><span>Your budget</span><b id="a-budget"></b></div>
+    <div class="me"><span>Squad</span><b id="a-slots"></b></div>
+    <button id="mute" class="icon" type="button" aria-label="Toggle sound">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="muteWave" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    </button>
+  </header>
+  <div class="arena">
+    <div class="col">
+      <section class="stage panel">
+        <div class="lotwrap" id="lotWrap"><div id="lotCard"></div><div id="stamp" class="stamp"></div></div>
+        <div class="bidzone">
+          <div class="ticker">
+            <div class="ring" id="ring">
+              <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="52"/><circle class="arc" id="ringArc" cx="60" cy="60" r="52"/></svg>
+              <div class="clock" id="clock">20.0</div>
+            </div>
+            <div class="price">
+              <span id="priceLabel">Opening price</span>
+              <b id="price">0</b>
+              <div class="leader" id="leader"></div>
+            </div>
+          </div>
+          <div class="quick" id="quick"></div>
+          <form class="custom" id="customForm">
+            <input id="custom" type="number" inputmode="numeric" step="50" min="0" placeholder="Custom bid" aria-label="Custom bid amount">
+            <button class="btn" type="submit">Place bid</button>
+          </form>
+          <p class="hint" id="hint"></p>
+        </div>
+      </section>
+      <ul class="mems" id="members"></ul>
+    </div>
+    <aside class="panel side">
+      <div class="tabs" role="tablist">
+        <button type="button" data-tab="feed" class="on">Live feed</button>
+        <button type="button" data-tab="squads">Squads</button>
+      </div>
+      <div id="tabBody"></div>
+    </aside>
+  </div>
+</main>
+
+<!-- FINISH -->
+<main id="done" class="screen wrap" hidden>
+  <header class="winner">
+    <p class="eyebrow">Auction complete</p>
+    <h1 id="winName"></h1>
+    <p class="small" id="winSub"></p>
+  </header>
+  <div class="done-grid">
+    <section class="panel">
+      <h2>Final table</h2>
+      <ul id="stand" class="stand"></ul>
+      <div class="row" style="margin-top:1rem"><button id="newGame" class="btn" type="button">Back to start</button></div>
+    </section>
+    <section class="panel" id="teamView"></section>
+  </div>
+</main>
+
+<script src="players.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
